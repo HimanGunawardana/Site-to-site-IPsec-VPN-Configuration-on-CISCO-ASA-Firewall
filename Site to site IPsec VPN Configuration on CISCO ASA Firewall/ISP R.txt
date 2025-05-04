@@ -1,0 +1,10 @@
+Router(config)#router ospf 10
+Router(config-router)#router-id 3.3.3.3
+Router(config-router)#network 100.50.10.0 0.0.0.3 area 0
+Router(config-router)#network 100.50.10.4 0.0.0.3 area 0
+
+
+Router(config)#do wr
+Building configuration...
+[OK]
+Router(config)#

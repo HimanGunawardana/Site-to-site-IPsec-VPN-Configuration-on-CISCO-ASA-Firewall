@@ -1,0 +1,135 @@
+interface gigabitEthernet 1/1
+ip address 100.50.10.6 255.255.255.252
+no shutdown 
+nameif OUTSIDE
+security-level 0
+exit
+
+interface gigabitEthernet 1/2
+ip address 10.10.10.6 255.255.255.252
+no shutdown 
+nameif INSIDE
+security-level 100
+exit
+
+wr mem
+
+object network NET2
+subnet 192.168.20.0 255.255.255.0
+nat (INSIDE,OUTSIDE) dynamic interface 
+exit
+
+access-list RES1 extended permit icmp any any 
+access-list RES1 extended permit tcp any any eq 80
+access-list RES1 extended permit tcp any any eq 443
+
+access-group RES1 in interface OUTSIDE
+
+route OUTSIDE 0.0.0.0 0.0.0.0 100.50.10.5
+
+router ospf 10
+router-id 5.5.5.5
+network 100.50.10.4 255.255.255.252 area 0
+network 10.10.10.4 255.255.255.252 area 0
+-------------------------------------------------------------------------------------------------------
+
+
+
+
+BRANCH-FW(config)#interface gigabitEthernet 1/1
+BRANCH-FW(config-if)#ip address 100.50.10.6 255.255.255.252
+BRANCH-FW(config-if)#no shutdown 
+BRANCH-FW(config-if)#nameif OUTSIDE
+BRANCH-FW(config-if)#security-level 0
+BRANCH-FW(config-if)#exit
+
+BRANCH-FW(config)#interface gigabitEthernet 1/2
+BRANCH-FW(config-if)#ip address 10.10.10.6 255.255.255.252
+BRANCH-FW(config-if)#no shutdown 
+BRANCH-FW(config-if)#nameif INSIDE
+BRANCH-FW(config-if)#security-level 100
+BRANCH-FW(config-if)#exit
+
+BRANCH-FW(config)#wr mem
+Building configuration...
+Cryptochecksum: 587a1325 1b9a140c 03b53e71 7305611e
+
+1147  bytes copied in 2.342 secs (489 bytes/sec)
+[OK]
+BRANCH-FW(config)#
+
+-----------object network + NAT on ASA FWL----------------------------
+BRANCH-FW(config)#object network NET2
+BRANCH-FW(config-network-object)#subnet 192.168.20.0 255.255.255.0
+BRANCH-FW(config-network-object)#nat (INSIDE,OUTSIDE) dynamic interface 
+BRANCH-FW(config-network-object)#exit
+
+-----------FWL inspection policies on the ASA FWL---------------------
+BRANCH-FW(config)#access-list RES1 extended permit icmp any any 
+BRANCH-FW(config)#access-list RES1 extended permit tcp any any eq 80
+BRANCH-FW(config)#access-list RES1 extended permit tcp any any eq 443
+
+BRANCH-FW(config)#access-group RES1 in interface OUTSIDE
+---------------------------------------------------------------------
+
+---------OSPF + Default Routes on the ASA FWL-------------------------
+BRANCH-FW(config)#route OUTSIDE 0.0.0.0 0.0.0.0 100.50.10.5
+
+BRANCH-FW(config)#router ospf 10
+BRANCH-FW(config-router)#router-id 5.5.5.5
+BRANCH-FW(config-router)#network 100.50.10.4 255.255.255.252 area 0
+BRANCH-FW(config-router)#network 10.10.10.4 255.255.255.252 area 0
+
+
+
+----------Configure Site to Site IPsec VPN on the ASA FWL-------------
+
+	  - create crypto ikev1 policy-----
+		BRANCH-FW(config)#crypto ikev1 policy 10
+		BRANCH-FW(config-ikev1-policy)#hash sha
+		BRANCH-FW(config-ikev1-policy)#authentication pre-share 
+		BRANCH-FW(config-ikev1-policy)#group 2
+		BRANCH-FW(config-ikev1-policy)#lifetime 86400
+		BRANCH-FW(config-ikev1-policy)#encryption 3des 
+		BRANCH-FW(config-ikev1-policy)#exit
+	  - Tunnel group to specify pre-shared key
+		BRANCH-FW(config)#tunnel-group 100.50.10.2 type IPsec-l2l 
+		BRANCH-FW(config)#tunnel-group 100.50.10.2 IPsec-attributes
+		BRANCH-FW(config-tunnel-ipsec)#ikev1 pre-shared-key cisco
+		BRANCH-FW(config-tunnel-ipsec)#exit
+	  - Create IPsec Transform set
+		BRANCH-FW(config)#crypto ipsec ikev1 transform-set TEST esp-3des esp-sha-hmac 
+	  - ACL to identify traffic of interest
+		BRANCH-FW(config)#access-list VPN-ACL permit ip 192.168.20.0 255.255.255.0 192.168.10.0 255.255.255.0
+	  - Create Crypto map
+		BRANCH-FW(config)#crypto map CMAP 10 set peer 100.50.10.2
+		BRANCH-FW(config)#crypto map CMAP 10 set ikev1 transform-set TEST
+		BRANCH-FW(config)#crypto map CMAP 10 match address VPN-ACL
+	  - Enable ikev1 and apply crypto map on the interface
+		BRANCH-FW(config)#crypto ikev1 enable OUTSIDE 
+		BRANCH-FW(config)#crypto map CMAP interface OUTSIDE 
+		BRANCH-FW(config)#wr mem
+
+
+-----------Test communication and show the encryption--------------
+
+BRANCH-FW#show crypto ipsec sa
+BRANCH-FW# show crypto isakmp sa 
+
+-------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

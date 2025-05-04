@@ -1,0 +1,9 @@
+B-R1(config)#router ospf 10
+B-R1(config-router)#router-id 2.2.2.2
+B-R1(config-router)#network 192.168.20.0 0.0.0.255 area 0
+B-R1(config-router)#network 10.10.10.4 0.0.0.3 area 0
+
+B-R1(config)#do wr
+Building configuration...
+[OK]
+B-R1(config)#

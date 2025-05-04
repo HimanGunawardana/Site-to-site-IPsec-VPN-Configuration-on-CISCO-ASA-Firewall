@@ -1,0 +1,9 @@
+HQ-R1(config)#router ospf 10
+HQ-R1(config-router)#router-id 1.1.1.1
+HQ-R1(config-router)#network 10.10.10.0 0.0.0.3 area 0
+HQ-R1(config-router)#network 192.168.10.0 0.0.0.255 area 0
+HQ-R1(config-router)#do wr
+Building configuration...
+[OK]
+HQ-R1(config-router)#
+

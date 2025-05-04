@@ -1,0 +1,140 @@
+interface gigabitEthernet 1/1
+ip address 100.50.10.2 255.255.255.252
+no shutdown
+nameif OUTSIDE
+security-level 0
+exit
+
+interface gigabitEthernet 1/2
+ip address 10.10.10.2 255.255.255.252
+no shutdown
+nameif INSIDE
+security-level 100
+exit
+
+object network NET1
+subnet 192.168.10.0 255.255.255.0
+nat (INSIDE,OUTSIDE) dynamic interface 
+exit
+
+-----------FWL inspection policies on the ASA FWL---------------------
+access-list RES extended permit icmp any any 
+access-list RES extended permit tcp any any eq 80
+access-list RES extended permit tcp any any eq 443
+
+access-group RES in interface OUTSIDE
+
+route OUTSIDE 0.0.0.0 0.0.0.0 100.50.10.1
+
+router ospf 10
+router-id 4.4.4.4
+network 100.50.10.0 255.255.255.252 area 0
+network 10.10.10.0 255.255.255.252 area 0
+exit
+wr mem
+-------------------------------------------------------------------------------
+
+
+
+ciscoasa(config)#interface gigabitEthernet 1/1
+ciscoasa(config-if)#ip address 100.50.10.2 255.255.255.252
+ciscoasa(config-if)#no shutdown
+ciscoasa(config-if)#nameif OUTSIDE
+ciscoasa(config-if)#security-level 0
+ciscoasa(config-if)#exit
+
+ciscoasa(config)#interface gigabitEthernet 1/2
+ciscoasa(config-if)#ip address 10.10.10.2 255.255.255.252
+ciscoasa(config-if)#no shutdown
+ciscoasa(config-if)#nameif INSIDE
+ciscoasa(config-if)#security-level 100
+ciscoasa(config-if)#exit
+ciscoasa(config)#
+ciscoasa(config)#wr mem
+
+
+-----------object network + NAT on ASA FWL----------------------------
+HQ-FW(config)#object network NET1
+HQ-FW(config-network-object)#subnet 192.168.10.0 255.255.255.0
+HQ-FW(config-network-object)#nat (INSIDE,OUTSIDE) dynamic interface 
+HQ-FW(config-network-object)#exit
+
+-----------FWL inspection policies on the ASA FWL---------------------
+HQ-FW(config)#access-list RES extended permit icmp any any 
+HQ-FW(config)#access-list RES extended permit tcp any any eq 80
+HQ-FW(config)#access-list RES extended permit tcp any any eq 443
+
+HQ-FW(config)#access-group RES in interface OUTSIDE
+----------------------------------------------------------------------
+
+
+---------OSPF + Default Routes on the ASA FWL-------------------------
+HQ-FW(config)#route OUTSIDE 0.0.0.0 0.0.0.0 100.50.10.1
+
+HQ-FW(config)#router ospf 10
+HQ-FW(config-router)#router-id 4.4.4.4
+HQ-FW(config-router)#network 100.50.10.0 255.255.255.252 area 0
+HQ-FW(config-router)#network 10.10.10.0 255.255.255.252 area 0
+HQ-FW(config-router)#exit
+HQ-FW(config)#wr mem
+Building configuration...
+Cryptochecksum: 254019a1 71d0043c 0b3b4de8 07927b72
+
+1642  bytes copied in 1.556 secs (1055 bytes/sec)
+[OK]
+HQ-FW(config)#
+
+
+
+
+----------Configure Site to Site IPsec VPN on the ASA FWL-------------
+
+	  - create crypto ikev1 policy
+		HQ-FW(config)#crypto ikev1 policy 10
+		HQ-FW(config-ikev1-policy)#hash sha
+		HQ-FW(config-ikev1-policy)#authentication pre-share 
+		HQ-FW(config-ikev1-policy)#group 2
+		HQ-FW(config-ikev1-policy)#lifetime 86400
+		HQ-FW(config-ikev1-policy)#encryption 3des 
+	  - Tunnel group to specify pre-shared key
+		HQ-FW(config)#tunnel-group 100.50.10.6 type IPsec-l2l 
+		HQ-FW(config)#tunnel-group 100.50.10.6 IPsec-attributes		 
+		HQ-FW(config-tunnel-ipsec)#ikev1 pre-shared-key cisco
+	  - Create IPsec Transform set
+		HQ-FW(config)#crypto ipsec ikev1 transform-set TEST esp-3des esp-sha-hmac 
+	  - ACL to identify traffic of interest
+		HQ-FW(config)#access-list VPN-ACL permit ip 192.168.10.0 255.255.255.0 192.168.20.0 255.255.255.0
+	  - Create Crypto map
+		HQ-FW(config)#crypto map CMAP 10 set peer 100.50.10.6
+ 		HQ-FW(config)#crypto map CMAP 10 set ikev1 transform-set TEST
+		HQ-FW(config)#crypto map CMAP 10 match address VPN-ACL
+	  - Enable ikev1 and apply crypto map on the interface
+		HQ-FW(config)#crypto ikev1 enable OUTSIDE 
+		HQ-FW(config)#crypto map CMAP interface OUTSIDE 
+		HQ-FW(config)#wr mem
+
+-----------Test communication and show the encryption--------------
+
+HQ-FW#show crypto ipsec sa
+HQ-FW#show crypto isakmp sa 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
